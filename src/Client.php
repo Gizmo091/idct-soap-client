@@ -26,7 +26,7 @@ class Client extends SoapClient
      *
      * @var string|null
      */
-    protected ?string $authPassword;
+    protected ?string $authPassword = null;
 
     /**
      * Value of the content-type header sent with every message.
@@ -35,7 +35,7 @@ class Client extends SoapClient
      *
      * @var string|null
      */
-    protected ?string $contentType;
+    protected ?string $contentType = null;
 
     /**
      * Associative array of custom headers to sent together with the request
