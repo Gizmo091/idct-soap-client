@@ -12,14 +12,14 @@ class Client extends SoapClient
      *
      * @var boolean
      */
-    protected bool $auth;
+    protected bool $auth = false;
 
     /**
      * If auth set to true this will be sent as login for the basic http auth
      *
-     * @var string
+     * @var string|null
      */
-    protected string $authLogin;
+    protected ?string $authLogin = null;
 
     /**
      * If auth set to true this will be sent as password for the basic http auth
@@ -91,6 +91,7 @@ class Client extends SoapClient
      * @param int|null $persistanceTimeout Read timeout in seconds. 0 to disable. null to use ini default_socket_timeout
      *
      * @throws \SoapFault
+     * @throws \Exception
      */
     public function __construct( $wsdl, array $options = [], int $negotiationTimeout = 0, int $persistanceFactor = 1, int $persistanceTimeout = null)
     {
