@@ -12,65 +12,65 @@ class Client extends SoapClient
      *
      * @var boolean
      */
-    protected $auth;
+    protected bool $auth;
 
     /**
      * If auth set to true this will be sent as login for the basic http auth
      *
      * @var string
      */
-    protected $authLogin;
+    protected string $authLogin;
 
     /**
      * If auth set to true this will be sent as password for the basic http auth
      *
-     * @var string
+     * @var string|null
      */
-    protected $authPassword;
+    protected ?string $authPassword;
 
     /**
      * Value of the content-type header sent with every message.
      * Defaults to text/xml, yet as some services expect type/application-xml
      * or application/soap+xml allows override the default type.
      *
-     * @var string
+     * @var string|null
      */
-    protected $contentType;
+    protected ?string $contentType;
 
     /**
      * Associative array of custom headers to sent together with the request
      *
      * @var array
      */
-    protected $customHeaders;
+    protected array $customHeaders;
 
     /**
      * If set to false then request will not fail in case of invalid SSL cert
      *
      * @var boolean
      */
-    protected $ignoreCertVerify;
+    protected bool $ignoreCertVerify;
 
     /**
      * Connection negotiation timeout in seconds
      *
      * @var int
      */
-    protected $negotiationTimeout;
+    protected int $negotiationTimeout;
 
     /**
      * Number of retries until exception is thrown
      *
      * @var int
      */
-    protected $persistanceFactor;
+    protected int $persistanceFactor;
 
     /**
      * Read timeout (after a successful connection) in seconds)
      *
      * @var int
      */
-    protected $persistanceTimeout;
+    protected int $persistanceTimeout;
 
     /**
      * Last connection's error number. Returned from curl_errno. 0 means no error.
@@ -78,19 +78,21 @@ class Client extends SoapClient
      *
      * @var int|null
      */
-    protected $lastConnErrNo;
+    protected ?int $lastConnErrNo;
 
     /**
      * Constructor of the new object. Creates an instance of the new SoapClient.
      * Sets default values of the timeouts and number of retries.
      *
-     * @param string $wsdl Url of the WebService's wsdl
-     * @param array $options PHP SoapClient's array of options
-     * @param int $negotiationTimeout Connection timeout in seconds. 0 to disable.
-     * @param int $persistanceFactor Number of retries.
-     * @param int $persistanceTimeout Read timeout in seconds. 0 to disable. null to use ini default_socket_timeout
+     * @param string   $wsdl               Url of the WebService's wsdl
+     * @param array    $options            PHP SoapClient's array of options
+     * @param int      $negotiationTimeout Connection timeout in seconds. 0 to disable.
+     * @param int      $persistanceFactor  Number of retries.
+     * @param int|null $persistanceTimeout Read timeout in seconds. 0 to disable. null to use ini default_socket_timeout
+     *
+     * @throws \SoapFault
      */
-    public function __construct($wsdl, $options = [], $negotiationTimeout = 0, $persistanceFactor = 1, $persistanceTimeout = null)
+    public function __construct( $wsdl, array $options = [], int $negotiationTimeout = 0, int $persistanceFactor = 1, int $persistanceTimeout = null)
     {
         if ($persistanceTimeout === null) {
             //let us try default to default_socket_timeout
@@ -124,20 +126,22 @@ class Client extends SoapClient
      * Throws an exception if connection or data read fails more than the number of retries (persistanceFactor).
      * Returns data response / content.
      *
-     * @param string $request Request (XML/Data) to be sent to the WebService parsed by SoapClient.
-     * @param string $location WebService URL.
-     * @param string $action Currently not used. In the signature for compatibility with SoapClient. TODO: to be used with particular soap versions.
-     * @param int $version Currently not used. In the signature for compatibility with SoapClient. TODO: add Soap Version selection.
-     * @param bool $one_way Currently not used. In the signature for compatibility with SoapClient.
-     * @return mixed
+     * @param string    $request  Request (XML/Data) to be sent to the WebService parsed by SoapClient.
+     * @param string    $location WebService URL.
+     * @param string    $action   Currently not used. In the signature for compatibility with SoapClient. TODO: to be used with particular soap versions.
+     * @param int       $version  Currently not used. In the signature for compatibility with SoapClient. TODO: add Soap Version selection.
+     * @param bool|null $oneWay   Currently not used. In the signature for compatibility with SoapClient.
+     *
+     * @return string|null
+     * @throws \Exception
      */
-    public function __doRequest($request, $location, $action, $version, $one_way = null)
+    public function __doRequest( string $request, string $location, string $action, int $version, bool $oneWay = null) : ?string
     {
         $response = "";
         for ($attempt = 0; $attempt < $this->persistanceFactor; $attempt++) {
             $ch = curl_init($location);
             curl_setopt($ch, CURLOPT_HEADER, false);
-            if ($one_way !== true) {
+            if ($oneWay !== true) {
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             }
             curl_setopt($ch, CURLOPT_POST, true);
@@ -160,7 +164,7 @@ class Client extends SoapClient
 
             $response = curl_exec($ch);
 
-            if (strstr($response, 'Content-Type: application/xop+xml'))
+            if ( str_contains( $response, 'Content-Type: application/xop+xml' ) )
             {
                 $response = \stristr((string) \stristr($response, '<s:'), '</s:Envelope>', true).'</s:Envelope>';
             }
@@ -185,8 +189,7 @@ class Client extends SoapClient
      *
      * @return int|null
      */
-    public function getLastConnErrNo()
-    {
+    public function getLastConnErrNo(): ?int {
         return $this->lastConnErrNo;
     }
 
@@ -197,9 +200,8 @@ class Client extends SoapClient
      *
      * @return string
      */
-    public function getLastConnErrText()
-    {
-        return curl_strerror((int) $this->getLastConnErrNo);
+    public function getLastConnErrText(): string {
+        return curl_strerror((int) $this->getLastConnErrNo());
     }
 
     /**
@@ -207,11 +209,12 @@ class Client extends SoapClient
      * request header. Suggested values: text/xml; application/soap+xml;
      * type/application-xml
      *
-     * @param string $contentType
+     * @param string|null $contentType
+     *
      * @return $this
+     * @throws \Exception
      */
-    public function setContentType($contentType = null)
-    {
+    public function setContentType( string $contentType = null): static {
         if ($contentType !== null && !is_string($contentType)) {
             throw new Exception('Content-type value must be a valid string or null to use Soap verion defaults.');
         }
@@ -224,10 +227,9 @@ class Client extends SoapClient
     /**
      * Returns the value of the contentType variable
      *
-     * @return string
+     * @return string|null
      */
-    public function getContentType()
-    {
+    public function getContentType(): ?string {
         return $this->contentType;
     }
 
@@ -237,10 +239,11 @@ class Client extends SoapClient
      * Set 0 to disable the timeout.
      *
      * @param int $timeoutInSeconds
+     *
      * @return $this
+     * @throws \Exception
      */
-    public function setNegotiationTimeout($timeoutInSeconds)
-    {
+    public function setNegotiationTimeout( int $timeoutInSeconds): static {
         if ($timeoutInSeconds < 0) {
             throw new Exception('Negotiation timeout must be a positive integer or 0 to disable.');
         } else {
@@ -255,8 +258,7 @@ class Client extends SoapClient
      *
      * @return int
      */
-    public function getNegotiationTimeout()
-    {
+    public function getNegotiationTimeout(): int {
         return $this->negotiationTimeout;
     }
 
@@ -265,10 +267,11 @@ class Client extends SoapClient
      * Value must be at least equal to one.
      *
      * @param int $attempts
+     *
      * @return $this
+     * @throws \Exception
      */
-    public function setPersistanceFactor($attempts)
-    {
+    public function setPersistanceFactor( int $attempts): static {
         if ($attempts < 1) {
             throw new Exception('Number of attempts must be at least equal to 1.');
         } else {
@@ -283,8 +286,7 @@ class Client extends SoapClient
      *
      * @return int
      */
-    public function getPersistanceFactor()
-    {
+    public function getPersistanceFactor(): int {
         return $this->persistanceFactor;
     }
 
@@ -293,11 +295,12 @@ class Client extends SoapClient
      * Throws an exception when value is negative.
      * Set 0 to disable timeout. null to use ini default_socket_timeout
      *
-     * @param int $timeoutInSeconds
+     * @param int|null $timeoutInSeconds
+     *
      * @return $this
+     * @throws \Exception
      */
-    public function setPersistanceTimeout($timeoutInSeconds = null)
-    {
+    public function setPersistanceTimeout( int $timeoutInSeconds = null): static {
         if ($timeoutInSeconds === null) {
             //let us try default to default_socket_timeout
             $iniDefaultSocketTimeout = ini_get('default_socket_timeout');
@@ -317,8 +320,7 @@ class Client extends SoapClient
      * Gets the data read (after negotiation) timeout in seconds.
      * @return int
      */
-    public function getPersistanceTimeout()
-    {
+    public function getPersistanceTimeout(): int {
         return $this->persistanceTimeout;
     }
 
@@ -327,10 +329,11 @@ class Client extends SoapClient
      * Throws an exception if not an array.
      *
      * @param array $headers
+     *
      * @return $this
+     * @throws \Exception
      */
-    public function setHeaders($headers)
-    {
+    public function setHeaders( mixed $headers): static {
         if (is_array($headers)) {
             $this->customHeaders = $headers;
         } else {
@@ -345,8 +348,7 @@ class Client extends SoapClient
      *
      * @return array
      */
-    public function getHeaders()
-    {
+    public function getHeaders(): array {
         return $this->customHeaders;
     }
 
@@ -356,10 +358,11 @@ class Client extends SoapClient
      *
      * @param string $header
      * @param string $value
+     *
      * @return $this
+     * @throws \Exception
      */
-    public function setHeader($header, $value)
-    {
+    public function setHeader( string $header, string $value): static {
         if (strlen($header) < 1) {
             throw new Exception('Header must be a string.');
         }
@@ -372,10 +375,10 @@ class Client extends SoapClient
      * Gets a custom header from the array of headers to be sent with the request or null.
      *
      * @param string $header
+     *
      * @return string
      */
-    public function getHeader($header)
-    {
+    public function getHeader( string $header): string {
         return $this->customHeaders[$header];
     }
 
@@ -383,10 +386,10 @@ class Client extends SoapClient
      * Sets a boolean value of the flag which indicates if request should not worry about invalid SSL certificate.
      *
      * @param boolean $value
+     *
      * @return $this
      */
-    public function setIgnoreCertVerify($value)
-    {
+    public function setIgnoreCertVerify( bool $value): static {
         $this->ignoreCertVerify = $value;
 
         return $this;
@@ -396,8 +399,7 @@ class Client extends SoapClient
      * Gets the value of the flag which indicates if request should not worry about invalid SSL certificate.
      * @return boolean
      */
-    public function getIgnoreCertVerify()
-    {
+    public function getIgnoreCertVerify(): bool {
         return $this->ignoreCertVerify;
     }
 
@@ -406,10 +408,10 @@ class Client extends SoapClient
      * by soap call protocol's version (like SOAPAction or specific content type).
      *
      * @param int $version SOAP protocol version (SOAP_1_1, SOAP_1_2)
+     *
      * @return string[]
      */
-    protected function buildHeaders($version, $action)
-    {
+    protected function buildHeaders( int $version, $action): array {
         $headers = $this->customHeaders;
 
         //add version specific headers
